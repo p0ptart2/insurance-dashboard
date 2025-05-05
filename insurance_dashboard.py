@@ -77,7 +77,8 @@ min_charges = charges_slider.rx()[0]
 # smoker menu
 smoker_select = pn.widgets.Select(
     name='Smoker',
-    options=list(prepared_data['smoker'].unique())
+    options=list(prepared_data['smoker'].unique()) + ['All'],  # Add 'All' option to the list
+    value='All'  # Set default value to 'All'
 )
 
 smoker = smoker_select.rx()
@@ -85,7 +86,8 @@ smoker = smoker_select.rx()
 # region toggle
 region_select = pn.widgets.Select(
     name='Region',
-    options=list(prepared_data['region'].unique())
+    options=list(prepared_data['region'].unique()) + ['All'],
+    value='All'
 )
 
 region = region_select.rx()
@@ -93,58 +95,93 @@ region = region_select.rx()
 # sex toggle
 sex_select = pn.widgets.Select(
     name='Sex',
-    options=list(prepared_data['sex'].unique())
+    options=list(prepared_data['sex'].unique()) + ['All'],
+    # options=["male","female","All"],
+    value='All'
 )
 
 sex = sex_select.rx()
 
-def filter_data(min_age, max_age, min_bmi, max_bmi, min_charges, max_charges, smoker_status, region, sex):
+# , min_charges, max_charges, smoker_status, region, sex
+def filter_data(min_age, max_age, min_bmi, max_bmi, max_charges, min_charges, smoker, region, sex):
     age_filter = (prepared_data['age'] >= min_age) & (prepared_data['age'] <= max_age)
     bmi_filter = (prepared_data['bmi'] >= min_bmi) & (prepared_data['bmi'] <= max_bmi)
     charges_filter = (prepared_data['charges'] >= min_charges) & (prepared_data['charges'] <= max_charges)
-    smoker_filter = (prepared_data['smoker'] == smoker_status) if smoker_status != 'All' else True
+    smoker_filter = (prepared_data['smoker'] == smoker) if smoker != 'All' else True
     region_filter = (prepared_data['region'] == region) if region != 'All' else True
     sex_filter = (prepared_data['sex'] == sex) if sex != 'All' else True
-    return prepared_data.loc[age_filter & bmi_filter & charges_filter & smoker_filter & region_filter & sex_filter]
+    #  
+    data = prepared_data.loc[age_filter & bmi_filter & charges_filter & smoker_filter & region_filter & sex_filter]
+    return data 
 
-def filter_test(min_age, max_age):
-    data = prepared_data.loc[(prepared_data.age >= min_age) & (prepared_data.age <= max_age)]
-    return data
+df = pn.rx(filter_data)(max_age=max_age, min_age=min_age, 
+                        min_bmi=min_bmi, max_bmi=max_bmi, 
+                        max_charges=max_charges, min_charges=min_charges, 
+                        smoker=smoker, 
+                        region=region, 
+                        sex=sex)
+table = pn.widgets.Tabulator(df, sizing_mode="stretch_both", name="Table", show_index=False, disabled=True, theme='fast')
 
-read_params = pn.rx(
-    "Max Age: {max_age},<br>"
-    "Min Age: {min_age},<br>"
-    "Max BMI: {max_bmi},<br>"
-    "Min BMI: {min_bmi},<br>"
-    "Smoker: {smoker},<br>"
-    "Region: {region},<br>"
-    "Sex: {sex}"
-).format(max_age=max_age, min_age=min_age, max_bmi=max_bmi, min_bmi=min_bmi, smoker=smoker, region=region, sex=sex)        
+# markdown
+markdown = pn.pane.Markdown(
+    """
+    # Insurance Dashboard
+    This is a simple insurance dashboard that allows you to filter data based on age, BMI, charges, smoker status""")
 
-pn.Column(read_params).servable()
-df = pn.rx(filter_test)(max_age=max_age, min_age=min_age)
-table = pn.widgets.Tabulator(df, sizing_mode="stretch_both", name="Table", show_index=False, disabled=True, theme='fast').servable()
+# summary stats
+# count
+count = df.rx.len()
+# total charges
+total_charges = df['charges'].sum()
+# mean charges
+mean_charges = df['charges'].mean()
+# stdevcharges
+std_charges = df['charges'].std()
+
+# plotly express
+def update_plot(min_age, max_age, min_bmi, max_bmi, max_charges, min_charges, smoker, region, sex):
+    filtered_data = filter_data(min_age, max_age, min_bmi, max_bmi, max_charges, min_charges, smoker, region, sex)
+    fig = px.histogram(filtered_data, x='age', color='sex')
+    # fig.update_traces(mode="markers", marker=dict(size=10))
+    return fig
+
+dynamic_plot = pn.bind(update_plot,
+    min_age=min_age,
+    max_age=max_age,
+    min_bmi=min_bmi,
+    max_bmi=max_bmi,
+    min_charges=min_charges,
+    max_charges=max_charges,
+    smoker=smoker,
+    region=region,
+    sex=sex)
+
+fig = pn.pane.Plotly(dynamic_plot, height=400, sizing_mode="stretch_width", name="Plot")
+
+# servables & layout
+styles = {
+    "box-shadow": "rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px",
+    "border-radius": "4px",
+    "padding": "10px",
+}
+pn.FlexBox(pn.indicators.Number(value=count, name="Count", styles=styles),
+        pn.indicators.Number(value=mean_charges, name="Mean Charges ($)", format="${value:,.0f}", styles=styles),
+        pn.indicators.Number(value=total_charges, name="Total Charges ($)", format="${value:,.0f}", styles=styles),
+        pn.indicators.Number(value=std_charges, name="Stdev Charges ($)", format="${value:,.0f}", styles=styles),
+    ).servable()
+pn.Row(
+    pn.Column(age_slider, bmi_slider, charges_slider, smoker_select, region_select, sex_select),
+    pn.Tabs(fig, table, sizing_mode='scale_width', height=500, margin=10)).servable()
+
 # test plot - static
 # fig = px.scatter(prepared_data, x = 'age', y = 'charges', color='sex')
 # fig.update_traces(mode="markers", marker=dict(size=10))
 # fig.layout.autosize = True
 # pn.pane.Plotly(fig, height=400, sizing_mode="stretch_width").servable()
 
-# test plot - dynamic
-# df = pn.rx(filter_data(
-#     prepared_data,
-#     min_age=age_slider.value[0],
-#     max_age=age_slider.value[1],
-#     min_bmi=bmi_slider.value[0],
-#     max_bmi=bmi_slider.value[1],
-#     min_charges=charges_slider.value[0],
-#     max_charges=charges_slider.value[1],
-#     smoker_status=smoker_check.value,
-#     region=region_select.value,
-#     sex=sex_select.value))
-
-# df = pn.rx(filter_test)(min_age=age_slider.value[0], max_age=age_slider.value[1])
-# fig = px.scatter(df, x='age', y='charges', color='sex')
+# fig = px.scatter(, x='bmi', y='charges', color='sex', size='children')
+# pn.pane.Plotly(fig, height=400, sizing_mode="stretch_width").servable()
+# # fig = px.scatter(df, x='age', y='charges', color='sex')
 # fig.update_traces(mode="markers", marker=dict(size=10))
 # fig.layout.autosize = True
 # pn.pane.Plotly(fig, height=400, sizing_mode="stretch_width").servable()
