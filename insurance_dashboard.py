@@ -172,25 +172,7 @@ pn.FlexBox(pn.indicators.Number(value=count, name="Count", styles=styles),
 pn.Row(
     pn.Column(age_slider, bmi_slider, charges_slider, smoker_select, region_select, sex_select),
     pn.Tabs(fig, table, sizing_mode='scale_width', height=500, margin=10)).servable()
-
-# test plot - static
-# fig = px.scatter(prepared_data, x = 'age', y = 'charges', color='sex')
-# fig.update_traces(mode="markers", marker=dict(size=10))
-# fig.layout.autosize = True
-# pn.pane.Plotly(fig, height=400, sizing_mode="stretch_width").servable()
-
-# fig = px.scatter(, x='bmi', y='charges', color='sex', size='children')
-# pn.pane.Plotly(fig, height=400, sizing_mode="stretch_width").servable()
-# # fig = px.scatter(df, x='age', y='charges', color='sex')
-# fig.update_traces(mode="markers", marker=dict(size=10))
-# fig.layout.autosize = True
-# pn.pane.Plotly(fig, height=400, sizing_mode="stretch_width").servable()
-
-# Dashboard Stats
-# average charges by region
-# average charges by BMI and gender
-# average charges by BMI and age
-
+pn.Column(markdown).servable()
 
 # TODO TVM Calculator
 # import TVM_function_numpy
