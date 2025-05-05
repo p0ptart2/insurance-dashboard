@@ -141,7 +141,7 @@ std_charges = df['charges'].std()
 # plotly express
 def update_plot(min_age, max_age, min_bmi, max_bmi, max_charges, min_charges, smoker, region, sex):
     filtered_data = filter_data(min_age, max_age, min_bmi, max_bmi, max_charges, min_charges, smoker, region, sex)
-    fig = px.histogram(filtered_data, x='age', color='sex')
+    fig = px.histogram(filtered_data, x='age', color='sex', color_discrete_map={'male': 'blue', 'female': 'red'})
     # fig.update_traces(mode="markers", marker=dict(size=10))
     return fig
 
@@ -164,6 +164,8 @@ styles = {
     "border-radius": "4px",
     "padding": "10px",
 }
+
+pn.Column(markdown).servable()
 pn.FlexBox(pn.indicators.Number(value=count, name="Count", styles=styles),
         pn.indicators.Number(value=mean_charges, name="Mean Charges ($)", format="${value:,.0f}", styles=styles),
         pn.indicators.Number(value=total_charges, name="Total Charges ($)", format="${value:,.0f}", styles=styles),
@@ -172,7 +174,6 @@ pn.FlexBox(pn.indicators.Number(value=count, name="Count", styles=styles),
 pn.Row(
     pn.Column(age_slider, bmi_slider, charges_slider, smoker_select, region_select, sex_select),
     pn.Tabs(fig, table, sizing_mode='scale_width', height=500, margin=10)).servable()
-pn.Column(markdown).servable()
 
 # TODO TVM Calculator
 # import TVM_function_numpy
